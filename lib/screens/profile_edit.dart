@@ -1,3 +1,4 @@
+import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
@@ -97,7 +98,7 @@ class _ProfileEditState extends State<ProfileEdit> {
   @override
   Widget build(BuildContext context) {
     final d = _data;
-    return Scaffold(
+    return ClarityMask(child: Scaffold(
       appBar: AppBar(title: Text(t('Edit profile'))),
       body: d == null
           ? const Center(child: CircularProgressIndicator())
@@ -160,6 +161,6 @@ class _ProfileEditState extends State<ProfileEdit> {
                 child: FilledButton(onPressed: _busy ? null : _save, child: Text(t('Save'))),
               ),
             ),
-    );
+    ));
   }
 }
