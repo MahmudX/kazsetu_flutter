@@ -1,3 +1,4 @@
+import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -22,7 +23,13 @@ Future<void> main() async {
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await session.load();
-  runApp(const KazSetuApp());
+  // Microsoft Clarity session analytics. Screens with private data (sign-in, verification,
+  // chat, agreements, profile editing) are wrapped in ClarityMask so they are never recorded.
+  // Use LogLevel.Verbose while testing to debug initialization.
+  runApp(ClarityWidget(
+    app: const KazSetuApp(),
+    clarityConfig: ClarityConfig(projectId: 'zbzyret3th', logLevel: LogLevel.None),
+  ));
 }
 
 class KazSetuApp extends StatelessWidget {

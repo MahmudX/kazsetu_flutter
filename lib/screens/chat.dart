@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -182,7 +183,7 @@ class _ChatThreadState extends State<ChatThread> with WidgetsBindingObserver {
     final thread = _thread;
     final theme = Theme.of(context);
     final all = [..._messages, ..._pending].reversed.toList();
-    return Scaffold(
+    return ClarityMask(child: Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
         title: thread == null
@@ -249,7 +250,7 @@ class _ChatThreadState extends State<ChatThread> with WidgetsBindingObserver {
                 ),
               ),
             ]),
-    );
+    ));
   }
 }
 

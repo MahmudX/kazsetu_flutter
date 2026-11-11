@@ -1,4 +1,5 @@
 
+import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -41,7 +42,7 @@ class _VerificationState extends State<Verification> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => ClarityMask(child: Scaffold(
         appBar: AppBar(title: Text(t('Verification'))),
         body: Loader(
           key: _loader,
@@ -71,7 +72,7 @@ class _VerificationState extends State<Verification> {
             );
           },
         ),
-      );
+      ));
 }
 
 class _Intro extends StatelessWidget {

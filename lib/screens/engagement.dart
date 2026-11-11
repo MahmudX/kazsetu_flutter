@@ -1,3 +1,4 @@
+import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -39,7 +40,7 @@ class _EngagementDetailState extends State<EngagementDetail> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => ClarityMask(child: Scaffold(
         appBar: AppBar(
           title: Text(t('Agreement')),
           actions: [
@@ -55,7 +56,7 @@ class _EngagementDetailState extends State<EngagementDetail> {
           load: () => session.get('engagements/${widget.id}'),
           builder: (context, e, reload) => RefreshIndicator(onRefresh: reload, child: _body(context, e as Map)),
         ),
-      );
+      ));
 
   Widget _body(BuildContext context, Map e) {
     final theme = Theme.of(context);
