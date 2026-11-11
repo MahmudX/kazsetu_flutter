@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:ui' as ui;
 
 import 'package:crypto/crypto.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -183,12 +184,27 @@ class Session extends ChangeNotifier {
         if (_access != null) 'Authorization': 'Bearer $_access',
       };
 
-  Future<http.Response> _request(String method, String path, {Map<String, Object?> query = const {}, Object? body}) {
+  Future<http.Response> _request(String method, String path, {Map<String, Object?> query = const {}, Object? body}) async {
     final uri = _uri(path, query);
-    return (method == 'GET'
-            ? http.get(uri, headers: _headers(json: false))
-            : http.post(uri, headers: _headers(), body: jsonEncode(body)))
+    final headers = _headers(json: method != 'GET');
+    // The server checks App Check on sign-in and sign-up only; asking for a token elsewhere would
+    // spend Play Integrity quota for nothing.
+    if (path.startsWith('auth/')) {
+      final appCheck = await _appCheckToken();
+      if (appCheck != null) headers['X-Firebase-AppCheck'] = appCheck;
+    }
+    return (method == 'GET' ? http.get(uri, headers: headers) : http.post(uri, headers: headers, body: jsonEncode(body)))
         .timeout(const Duration(seconds: 20));
+  }
+
+  /// The cached App Check token, or null when App Check is unavailable; the server then decides.
+  static Future<String?> _appCheckToken() async {
+    try {
+      return await FirebaseAppCheck.instance.getToken().timeout(const Duration(seconds: 10));
+    } catch (e) {
+      if (kDebugMode) debugPrint('App Check token unavailable: $e');
+      return null;
+    }
   }
 
   /// Sends, refreshes the access token once on 401, and turns errors into [ApiError].

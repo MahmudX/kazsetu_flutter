@@ -46,6 +46,7 @@ dependencies:
   firebase_auth: ^7.0.1
   smart_auth: ^4.0.0
   clarity_flutter: ^1.10.1
+  firebase_app_check: ^0.5.1
 
 dev_dependencies:
   flutter_test:
