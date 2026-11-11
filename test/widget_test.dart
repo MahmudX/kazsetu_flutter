@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kazsetu_mobile/api.dart';
 import 'package:kazsetu_mobile/i18n.dart';
+import 'package:kazsetu_mobile/screens/auth.dart';
 import 'package:kazsetu_mobile/screens/find_work.dart';
 import 'package:kazsetu_mobile/ui.dart';
 
@@ -69,5 +70,18 @@ void main() {
     expect(find.text('৳4,000 / project'), findsOneWidget);
     expect(find.text('Mirpur, Dhaka'), findsOneWidget);
     expect(find.text('2 people needed'), findsOneWidget);
+  });
+
+  // Issue #47: while a refused sign-in waits to be sent again, the person sees a calm countdown.
+  testWidgets('a waiting sign-in shows a calm countdown, then nothing', (tester) async {
+    session.lang = 'bn';
+    await tester.pumpWidget(const MaterialApp(home: Scaffold(body: AuthWaitNotice())));
+    expect(find.byType(Text), findsNothing);
+    session.authWait.value = 12;
+    await tester.pump();
+    expect(find.textContaining('১২ সেকেন্ড'), findsOneWidget);
+    session.authWait.value = 0;
+    await tester.pump();
+    expect(find.byType(Text), findsNothing);
   });
 }

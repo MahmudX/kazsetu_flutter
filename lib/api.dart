@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:crypto/crypto.dart';
@@ -41,6 +42,10 @@ class Session extends ChangeNotifier {
   static const _store = FlutterSecureStorage();
   String? _access, _refresh;
   Future<bool>? _refreshing;
+
+  /// Seconds left before a sign-in or sign-up that the server asked to wait is sent again; 0 when
+  /// nothing is waiting. The sign-in screens show it as a calm countdown.
+  final authWait = ValueNotifier<int>(0);
   Map<String, dynamic>? me;
   final langNotifier = ValueNotifier('bn');
   // False until the person picks a language once; the app asks on first open.
@@ -208,12 +213,26 @@ class Session extends ChangeNotifier {
   }
 
   /// Sends, refreshes the access token once on 401, and turns errors into [ApiError].
-  Future<dynamic> _send(Future<http.Response> Function() send, String path, {bool retried = false}) async {
+  Future<dynamic> _send(Future<http.Response> Function() send, String path, {bool retried = false, int waits = 0}) async {
     http.Response response;
     try {
       response = await send();
     } catch (_) {
       throw ApiError(0, lang == 'bn' ? 'ইন্টারনেট সংযোগ নেই। আবার চেষ্টা করুন।' : 'No connection. Try again.');
+    }
+
+    // Many sign-ins from one network (a shared mobile-carrier address): the server says how long
+    // to wait. A short wait is counted down and the same request sent again, so the person is still
+    // signed in, just a little later; a few seconds of jitter keep everyone from retrying at once.
+    // A longer wait is shown as the server's calm message.
+    final wait = int.tryParse(response.headers['retry-after'] ?? '') ?? 0;
+    if (response.statusCode == 429 && path.startsWith('auth/') && wait > 0 && wait <= 60 && waits < 3) {
+      for (var left = wait + Random().nextInt(4); left > 0; left--) {
+        authWait.value = left;
+        await Future<void>.delayed(const Duration(seconds: 1));
+      }
+      authWait.value = 0;
+      return _send(send, path, retried: retried, waits: waits + 1);
     }
 
     if (response.statusCode == 401 && _refresh != null && !retried && !path.startsWith('auth/')) {
