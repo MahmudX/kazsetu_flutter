@@ -1,5 +1,10 @@
 // Strings for posting, agreements, messages, talents, profiles and verification. [English, Bangla].
 const moreStrings = <String, List<String>>{
+  // Sign-in wait (issue #47): the request is sent again by itself when the countdown ends.
+  'Auth wait': [
+    'Many people on your network are signing in right now. We will try again in {0} seconds, no need to do anything.',
+    'আপনার নেটওয়ার্ক থেকে এখন অনেকে সাইন ইন করছেন। {0} সেকেন্ড পরে আমরা নিজেই আবার চেষ্টা করব, আপনাকে কিছু করতে হবে না।',
+  ],
   // Navigation and hub
   'Find': ['Find', 'খুঁজুন'],
   'Activity': ['Activity', 'কার্যক্রম'],
