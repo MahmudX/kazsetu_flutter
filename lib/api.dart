@@ -1,16 +1,26 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:crypto/crypto.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'google_auth.dart';
 
-/// Server origin. Override per build: --dart-define=API_BASE=http://10.0.2.2:5000
+/// Server origin. Override per build: --dart-define=API_BASE=https://10.0.2.2:5000
 const apiBase = String.fromEnvironment('API_BASE', defaultValue: 'https://kazsetu.com');
+
+/// Debug builds only: trust the untrusted ASP.NET dev certificate, and only on the emulator's
+/// host loopback (10.0.2.2) or localhost. Release builds keep full certificate checks.
+class DevCertOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) => super.createHttpClient(context)
+    ..badCertificateCallback = (_, host, _) => kDebugMode && (host == '10.0.2.2' || host == 'localhost');
+}
 
 /// A relative path from the server (e.g. a legacy /files/... picture) made absolute.
 String absUrl(String path) => path.startsWith('http') ? path : '$apiBase$path';
@@ -122,6 +132,10 @@ class Session extends ChangeNotifier {
     await _store.delete(key: 'access');
     await _store.delete(key: 'refresh');
     await GoogleAuth.signOut();
+    // A dead token makes the server drop this phone, so the next person to sign in here never
+    // receives the previous account's messages.
+    // ignore: deprecated_member_use
+    await FirebaseMessaging.instance.deleteToken().catchError((_) {});
   }
 
   void _saveTokens(dynamic body) {
