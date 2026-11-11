@@ -1,11 +1,11 @@
 {
-    "name": "kazsetu_mobile",
-    "short_name": "kazsetu_mobile",
+    "name": "KazSetu",
+    "short_name": "KazSetu",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#012E75",
+    "theme_color": "#012E75",
+    "description": "KazSetu — find short-term work near you.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -38,6 +38,6 @@ It needs:
 
 ## Not yet done
 
-- A release signing key (release builds still use the debug key) and a launcher icon made from the brand mark.
+- A release signing key (release builds still use the debug key).
 - Push notifications. The To do tab and open threads refresh themselves.
 - Phone-number SMS verification and password reset open the website.
