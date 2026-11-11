@@ -1,10 +1,26 @@
+import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:smart_auth/smart_auth.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 import '../api.dart';
+import '../google_auth.dart';
 import '../i18n.dart';
 import '../ui.dart';
+
+/// Fills an empty phone field with a number from this phone's SIM. Android's Phone Number Hint
+/// shows the SIM numbers to choose from and needs no phone permission; closing it just lets the
+/// person type. The number is still only a claim, like a typed one.
+Future<void> fillFromSim(TextEditingController field) async {
+  if (field.text.isNotEmpty) return;
+  final result = await SmartAuth.instance.requestPhoneNumberHint();
+  final number = result.data;
+  if (!result.isSuccess || number == null || field.text.isNotEmpty) return;
+  // +8801XXXXXXXXX is shown the way people write it here: 01XXXXXXXXX.
+  final local = number.replaceAll(RegExp(r'[\s-]'), '');
+  field.text = local.startsWith('+880') ? '0${local.substring(4)}' : local;
+}
 
 /// Signs in when needed and reports whether the person is signed in afterwards.
 Future<bool> requireSignIn(BuildContext context) async {
@@ -40,8 +56,36 @@ class _AuthScreenState extends State<AuthScreen> {
   final _login = TextEditingController();
   final _name = TextEditingController();
   final _password = TextEditingController();
-  bool _terms = false, _hidden = true, _busy = false, _termsError = false;
+  bool _terms = false, _hidden = true, _busy = false, _termsError = false, _askedSim = false;
   String? _error, _usernameError;
+
+  // As the first screen of the app there is nothing to go back to; the root swaps to the app.
+  void _done() {
+    HapticFeedback.lightImpact();
+    if (Navigator.of(context).canPop()) Navigator.of(context).pop();
+  }
+
+  // Signs in, or on a first Google sign-in asks for a phone number on the next screen.
+  Future<void> _withGoogle() async {
+    setState(() => (_busy = true, _error = null));
+    try {
+      final token = await GoogleAuth.firebaseIdToken();
+      if (token == null) return setState(() => _busy = false);
+      final signup = await session.google(token);
+      if (signup != null && mounted) {
+        await Navigator.of(context).push(MaterialPageRoute(builder: (_) => GoogleFinishScreen(signup: signup)));
+      }
+      if (!mounted) return;
+      if (session.signedIn) {
+        _done();
+      } else {
+        setState(() => _busy = false);
+      }
+    } on ApiError catch (e) {
+      HapticFeedback.mediumImpact();
+      if (mounted) setState(() => (_busy = false, _error = e.message));
+    }
+  }
 
   @override
   void dispose() {
@@ -70,8 +114,7 @@ class _AuthScreenState extends State<AuthScreen> {
       } else {
         await session.login(_login.text.trim(), _password.text);
       }
-      HapticFeedback.lightImpact();
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) _done();
     } on ApiError catch (e) {
       HapticFeedback.mediumImpact();
       setState(() => (_busy = false, _error = e.message));
@@ -83,7 +126,7 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Scaffold(
+    return ClarityMask(child: Scaffold(
       backgroundColor: K.deep,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -125,8 +168,25 @@ class _AuthScreenState extends State<AuthScreen> {
                       key: _form,
                       child: AutofillGroup(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, spacing: 14, children: [
+                          ...[
+                            OutlinedButton(
+                              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                              onPressed: _busy ? null : _withGoogle,
+                              child: Text(t('Continue with Google')),
+                            ),
+                            Row(children: [
+                              const Expanded(child: Divider()),
+                              Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text(t('or'))),
+                              const Expanded(child: Divider()),
+                            ]),
+                          ],
                           TextFormField(
                             controller: _login,
+                            onTap: () async {
+                              if (_askedSim) return;
+                              _askedSim = true;
+                              await fillFromSim(_login);
+                            },
                             keyboardType: _register ? TextInputType.phone : TextInputType.text,
                             autofillHints: [_register ? AutofillHints.telephoneNumber : AutofillHints.username],
                             textInputAction: TextInputAction.next,
@@ -220,6 +280,168 @@ class _AuthScreenState extends State<AuthScreen> {
               ]),
             ),
           ),
+        ),
+      ),
+    ));
+  }
+}
+
+/// A first Google sign-in: Google already gave the name and email, so only a phone number is
+/// asked. A number that already has an account links to it once its password is given.
+class GoogleFinishScreen extends StatefulWidget {
+  const GoogleFinishScreen({super.key, required this.signup});
+  final Map<String, dynamic> signup;
+  @override
+  State<GoogleFinishScreen> createState() => _GoogleFinishScreenState();
+}
+
+class _GoogleFinishScreenState extends State<GoogleFinishScreen> {
+  final _form = GlobalKey<FormState>();
+  final _phone = TextEditingController();
+  late final _name = TextEditingController(text: '${widget.signup['displayName'] ?? ''}');
+  final _password = TextEditingController();
+  bool _terms = false, _needsPassword = false, _busy = false, _termsError = false;
+  String? _error;
+  Map<String, String> _fields = const {};
+
+  @override
+  void dispose() {
+    _phone.dispose();
+    _name.dispose();
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final valid = _form.currentState!.validate();
+    // Linking an existing account needs its password, not the terms again.
+    final termsMissing = !_needsPassword && !_terms;
+    if (termsMissing) setState(() => _termsError = true);
+    if (!valid || termsMissing) {
+      HapticFeedback.mediumImpact();
+      return;
+    }
+    setState(() => (_busy = true, _error = null, _fields = const {}));
+    try {
+      await session.googleFinish({
+        'ticket': widget.signup['ticket'],
+        'phone': _phone.text.trim(),
+        'displayName': _name.text.trim(),
+        'username': widget.signup['username'],
+        'password': _needsPassword ? _password.text : null,
+        'acceptTerms': _terms,
+      });
+      HapticFeedback.lightImpact();
+      if (mounted) Navigator.of(context).pop();
+    } on ApiError catch (e) {
+      HapticFeedback.mediumImpact();
+      final field = e.body['field'] as String?;
+      setState(() {
+        _busy = false;
+        _needsPassword = _needsPassword || e.body['needsPassword'] == true;
+        if (field == 'phone' || field == 'password' || field == 'displayName') {
+          _fields = {field!: e.message};
+        } else {
+          _error = e.message;
+        }
+      });
+    }
+  }
+
+  String? _required(String? v) => (v == null || v.trim().isEmpty) ? t('Required') : null;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final email = widget.signup['email'] as String?;
+    return Scaffold(
+      appBar: AppBar(title: Text(t('Almost done'))),
+      body: SafeArea(
+        child: Form(
+          key: _form,
+          child: ListView(padding: const EdgeInsets.all(20), children: [
+            Text(t('Google phone body'), style: theme.textTheme.bodyLarge),
+            if (email != null) ...[
+              const SizedBox(height: 6),
+              Text(email, style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+            ],
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: _phone,
+              onTap: () => fillFromSim(_phone),
+              keyboardType: TextInputType.phone,
+              autofillHints: const [AutofillHints.telephoneNumber],
+              textInputAction: TextInputAction.next,
+              validator: _required,
+              onChanged: (_) {
+                // A different number may not have an account: ask for the terms again.
+                if (_needsPassword) setState(() => (_needsPassword = false, _fields = const {}));
+              },
+              decoration: InputDecoration(
+                labelText: t('Phone number'),
+                hintText: '01XXXXXXXXX',
+                errorText: _fields['phone'],
+                prefixIcon: const Icon(FluentIcons.phone_24_regular),
+              ),
+            ),
+            const SizedBox(height: 14),
+            TextFormField(
+              controller: _name,
+              textCapitalization: TextCapitalization.words,
+              validator: _required,
+              decoration: InputDecoration(
+                labelText: t('Your name'),
+                errorText: _fields['displayName'],
+                prefixIcon: const Icon(FluentIcons.contact_card_24_regular),
+              ),
+            ),
+            if (_needsPassword) ...[
+              const SizedBox(height: 14),
+              Text(t('Google link body'), style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _password,
+                obscureText: true,
+                autofillHints: const [AutofillHints.password],
+                validator: _required,
+                onFieldSubmitted: (_) => _submit(),
+                decoration: InputDecoration(
+                  labelText: t('Password'),
+                  errorText: _fields['password'],
+                  prefixIcon: const Icon(FluentIcons.lock_closed_24_regular),
+                ),
+              ),
+            ] else
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: _terms,
+                onChanged: (v) => setState(() => (_terms = v ?? false, _termsError = false)),
+                title: Text(t('Accept terms')),
+                subtitle: _termsError
+                    ? Text(t('Required'), style: TextStyle(color: theme.colorScheme.error))
+                    : GestureDetector(
+                        onTap: () => openWeb('/terms'),
+                        child: Text(t('Read terms'),
+                            style: TextStyle(color: theme.colorScheme.primary, decoration: TextDecoration.underline)),
+                      ),
+              ),
+            if (_error != null) ...[
+              const SizedBox(height: 10),
+              Semantics(
+                liveRegion: true,
+                child: Text(_error!, style: TextStyle(color: theme.colorScheme.error, fontWeight: FontWeight.w600)),
+              ),
+            ],
+            const SizedBox(height: 20),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: theme.colorScheme.tertiary, foregroundColor: theme.colorScheme.onTertiary),
+              onPressed: _busy ? null : _submit,
+              child: _busy
+                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                  : Text(t(_needsPassword ? 'Sign in' : 'Create account')),
+            ),
+          ]),
         ),
       ),
     );
