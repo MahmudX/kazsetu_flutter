@@ -258,4 +258,15 @@ const moreStrings = <String, List<String>>{
   'Send for review': ['Send for review', 'যাচাইয়ের জন্য পাঠান'],
   'Sent': ['Sent', 'পাঠানো হয়েছে'],
   'In review body': ['You will see the result here.', 'ফলাফল এখানে দেখবেন।'],
+  'Continue with Google': ['Continue with Google', 'গুগল দিয়ে চালিয়ে যান'],
+  'or': ['or', 'অথবা'],
+  'Almost done': ['Almost done', 'প্রায় শেষ'],
+  'Google phone body': [
+    'Add your phone number to finish. People you work with reach you on it.',
+    'শেষ করতে আপনার ফোন নম্বর দিন। যাদের সাথে কাজ করবেন তারা এতে যোগাযোগ করবেন।'
+  ],
+  'Google link body': [
+    'This number already has an account. Enter its password to add Google sign-in to it.',
+    'এই নম্বরে আগে থেকেই অ্যাকাউন্ট আছে। গুগল সাইন ইন যোগ করতে এর পাসওয়ার্ড দিন।'
+  ],
 };

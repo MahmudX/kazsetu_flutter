@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "913752698094",
+    "firebase_url": "https://ses-license-82428-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "ses-license-82428",
+    "storage_bucket": "ses-license-82428.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:913752698094:android:3bafb5b008817fafe9d7ff",
+        "android_client_info": {
+          "package_name": "com.kazsetu.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "913752698094-vfjg2j4nl4909i2r8pf680kh2hmegob3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyABVkulqrJz9gKRs7yxK6UH1oBdKSDPmhw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "913752698094-vfjg2j4nl4909i2r8pf680kh2hmegob3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

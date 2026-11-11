@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import 'google_auth.dart';
+
 /// Server origin. Override per build: --dart-define=API_BASE=http://10.0.2.2:5000
 const apiBase = String.fromEnvironment('API_BASE', defaultValue: 'https://kazsetu.com');
 
@@ -40,6 +42,10 @@ class Session extends ChangeNotifier {
   Future<bool>? _refreshing;
   Map<String, dynamic>? me;
   final langNotifier = ValueNotifier('bn');
+  // False until the person picks a language once; the app asks on first open.
+  final langChosen = ValueNotifier(false);
+  // The app opens only for a signed-in person; the root swaps to sign-in when this turns false.
+  final signedInNotifier = ValueNotifier(false);
   String get lang => langNotifier.value;
   set lang(String value) => langNotifier.value = value;
 
@@ -50,16 +56,20 @@ class Session extends ChangeNotifier {
     try {
       _access = await _store.read(key: 'access');
       _refresh = await _store.read(key: 'refresh');
-      lang = await _store.read(key: 'lang') ?? 'bn';
+      final stored = await _store.read(key: 'lang');
+      lang = stored ?? 'bn';
+      langChosen.value = stored != null;
     } catch (_) {
       // A corrupted keystore entry means signing in again, not a crash.
     }
+    signedInNotifier.value = signedIn;
     notifyListeners();
     if (signedIn) unawaited(refreshMe());
   }
 
   Future<void> setLang(String value) async {
     lang = value;
+    langChosen.value = true;
     await _store.write(key: 'lang', value: value);
     if (signedIn) unawaited(refreshMe());
   }
@@ -87,12 +97,31 @@ class Session extends ChangeNotifier {
     await refreshMe();
   }
 
+  /// Signs in with a Firebase ID token from Google. Returns null when signed in, or what Google
+  /// shared (ticket, displayName, email, username) when a phone number is still needed.
+  Future<Map<String, dynamic>?> google(String firebaseIdToken) async {
+    final body = await post('auth/google', {'idToken': firebaseIdToken}) as Map<String, dynamic>;
+    if (body['needsSignup'] == true) return body;
+    _saveTokens(body);
+    await refreshMe();
+    return null;
+  }
+
+  /// Finishes a first Google sign-in with a phone number (and that number's password if it
+  /// already has an account).
+  Future<void> googleFinish(Map<String, Object?> input) async {
+    _saveTokens(await post('auth/google/finish', input));
+    await refreshMe();
+  }
+
   Future<void> signOut() async {
     _access = _refresh = null;
     me = null;
+    signedInNotifier.value = false;
     notifyListeners();
     await _store.delete(key: 'access');
     await _store.delete(key: 'refresh');
+    await GoogleAuth.signOut();
   }
 
   void _saveTokens(dynamic body) {
@@ -100,6 +129,7 @@ class Session extends ChangeNotifier {
     _refresh = body['refreshToken'] as String;
     _store.write(key: 'access', value: _access);
     _store.write(key: 'refresh', value: _refresh);
+    signedInNotifier.value = true;
     notifyListeners();
   }
 
