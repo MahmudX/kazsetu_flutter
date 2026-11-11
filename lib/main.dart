@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:clarity_flutter/clarity_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -8,6 +11,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'api.dart';
 import 'firebase_options.dart';
 import 'i18n.dart';
+import 'push.dart';
 import 'screens/activity.dart';
 import 'screens/auth.dart';
 import 'screens/chat.dart';
@@ -20,9 +24,11 @@ import 'ui.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  if (kDebugMode) HttpOverrides.global = DevCertOverrides();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await session.load();
+  initPush();
   // Microsoft Clarity session analytics. Screens with private data (sign-in, verification,
   // chat, agreements, profile editing) are wrapped in ClarityMask so they are never recorded.
   // Use LogLevel.Verbose while testing to debug initialization.
@@ -44,6 +50,7 @@ class KazSetuApp extends StatelessWidget {
   Widget build(BuildContext context) => ListenableBuilder(
         listenable: Listenable.merge([session.langNotifier, session.langChosen, session.signedInNotifier]),
         builder: (_, _) => MaterialApp(
+          navigatorKey: navigatorKey,
           title: 'KazSetu',
           debugShowCheckedModeBanner: false,
           theme: _light,

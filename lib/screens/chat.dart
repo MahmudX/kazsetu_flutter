@@ -8,6 +8,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import '../api.dart';
 import '../i18n.dart';
 import '../links.dart';
+import '../push.dart';
 import '../ui.dart';
 import 'auth.dart';
 
@@ -20,6 +21,20 @@ class Inbox extends StatefulWidget {
 
 class _InboxState extends State<Inbox> {
   final _loader = GlobalKey<LoaderState>();
+
+  void _onPush() => _loader.currentState?.reload();
+
+  @override
+  void initState() {
+    super.initState();
+    incomingPush.addListener(_onPush);
+  }
+
+  @override
+  void dispose() {
+    incomingPush.removeListener(_onPush);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -106,8 +121,14 @@ class _ChatThreadState extends State<ChatThread> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    incomingPush.addListener(_onPush);
     _load();
     _timer = Timer.periodic(_interval, (_) => _load(quiet: true));
+  }
+
+  // A push from this person shows their message now rather than at the next poll.
+  void _onPush() {
+    if (incomingPush.value?.data['userId'] == widget.otherUserId) _load(quiet: true);
   }
 
   @override
@@ -124,6 +145,7 @@ class _ChatThreadState extends State<ChatThread> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    incomingPush.removeListener(_onPush);
     _timer?.cancel();
     _input.dispose();
     super.dispose();
