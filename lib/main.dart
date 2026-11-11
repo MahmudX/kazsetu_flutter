@@ -2,7 +2,9 @@ import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 import 'api.dart';
@@ -22,6 +24,11 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // App Check proves sign-up and sign-in requests come from this app (issue #47). Release builds
+  // use Play Integrity; debug builds print a debug token to logcat to register in the console.
+  await FirebaseAppCheck.instance.activate(
+    providerAndroid: kDebugMode ? const AndroidDebugProvider() : const AndroidPlayIntegrityProvider(),
+  );
   await session.load();
   // Microsoft Clarity session analytics. Screens with private data (sign-in, verification,
   // chat, agreements, profile editing) are wrapped in ClarityMask so they are never recorded.

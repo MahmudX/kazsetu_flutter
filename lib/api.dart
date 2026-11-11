@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:crypto/crypto.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -40,6 +42,10 @@ class Session extends ChangeNotifier {
   static const _store = FlutterSecureStorage();
   String? _access, _refresh;
   Future<bool>? _refreshing;
+
+  /// Seconds left before a sign-in or sign-up that the server asked to wait is sent again; 0 when
+  /// nothing is waiting. The sign-in screens show it as a calm countdown.
+  final authWait = ValueNotifier<int>(0);
   Map<String, dynamic>? me;
   final langNotifier = ValueNotifier('bn');
   // False until the person picks a language once; the app asks on first open.
@@ -183,21 +189,50 @@ class Session extends ChangeNotifier {
         if (_access != null) 'Authorization': 'Bearer $_access',
       };
 
-  Future<http.Response> _request(String method, String path, {Map<String, Object?> query = const {}, Object? body}) {
+  Future<http.Response> _request(String method, String path, {Map<String, Object?> query = const {}, Object? body}) async {
     final uri = _uri(path, query);
-    return (method == 'GET'
-            ? http.get(uri, headers: _headers(json: false))
-            : http.post(uri, headers: _headers(), body: jsonEncode(body)))
+    final headers = _headers(json: method != 'GET');
+    // The server checks App Check on sign-in and sign-up only; asking for a token elsewhere would
+    // spend Play Integrity quota for nothing.
+    if (path.startsWith('auth/')) {
+      final appCheck = await _appCheckToken();
+      if (appCheck != null) headers['X-Firebase-AppCheck'] = appCheck;
+    }
+    return (method == 'GET' ? http.get(uri, headers: headers) : http.post(uri, headers: headers, body: jsonEncode(body)))
         .timeout(const Duration(seconds: 20));
   }
 
+  /// The cached App Check token, or null when App Check is unavailable; the server then decides.
+  static Future<String?> _appCheckToken() async {
+    try {
+      return await FirebaseAppCheck.instance.getToken().timeout(const Duration(seconds: 10));
+    } catch (e) {
+      if (kDebugMode) debugPrint('App Check token unavailable: $e');
+      return null;
+    }
+  }
+
   /// Sends, refreshes the access token once on 401, and turns errors into [ApiError].
-  Future<dynamic> _send(Future<http.Response> Function() send, String path, {bool retried = false}) async {
+  Future<dynamic> _send(Future<http.Response> Function() send, String path, {bool retried = false, int waits = 0}) async {
     http.Response response;
     try {
       response = await send();
     } catch (_) {
       throw ApiError(0, lang == 'bn' ? 'ইন্টারনেট সংযোগ নেই। আবার চেষ্টা করুন।' : 'No connection. Try again.');
+    }
+
+    // Many sign-ins from one network (a shared mobile-carrier address): the server says how long
+    // to wait. A short wait is counted down and the same request sent again, so the person is still
+    // signed in, just a little later; a few seconds of jitter keep everyone from retrying at once.
+    // A longer wait is shown as the server's calm message.
+    final wait = int.tryParse(response.headers['retry-after'] ?? '') ?? 0;
+    if (response.statusCode == 429 && path.startsWith('auth/') && wait > 0 && wait <= 60 && waits < 3) {
+      for (var left = wait + Random().nextInt(4); left > 0; left--) {
+        authWait.value = left;
+        await Future<void>.delayed(const Duration(seconds: 1));
+      }
+      authWait.value = 0;
+      return _send(send, path, retried: retried, waits: waits + 1);
     }
 
     if (response.statusCode == 401 && _refresh != null && !retried && !path.startsWith('auth/')) {
