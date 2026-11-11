@@ -35,7 +35,7 @@ class _JobDetailState extends State<JobDetail> {
 
   Future<void> _load() async {
     try {
-      final d = await session.get('jobs/${widget.id}') as Map<String, dynamic>;
+      final d = await session.get('tasks/${widget.id}') as Map<String, dynamic>;
       if (mounted) setState(() => (_detail = d, _error = null));
     } catch (e) {
       if (mounted) setState(() => _error = e);
@@ -44,7 +44,7 @@ class _JobDetailState extends State<JobDetail> {
 
   @override
   Widget build(BuildContext context) {
-    final job = (_detail?['job'] as Map<String, dynamic>?) ?? widget.preview;
+    final job = (_detail?['task'] as Map<String, dynamic>?) ?? widget.preview;
     if (job == null) {
       return Scaffold(
         appBar: AppBar(),
@@ -144,7 +144,7 @@ class _JobDetailState extends State<JobDetail> {
             ]),
           ),
         ),
-        if ((d?['similarJobs'] as List?)?.isNotEmpty == true) ...[
+        if ((d?['similarTasks'] as List?)?.isNotEmpty == true) ...[
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 10),
@@ -158,7 +158,7 @@ class _JobDetailState extends State<JobDetail> {
                 controller: PageController(viewportFraction: 0.86),
                 padEnds: false,
                 children: [
-                  for (final s in d!['similarJobs'] as List)
+                  for (final s in d!['similarTasks'] as List)
                     Padding(
                       padding: const EdgeInsets.only(left: 16),
                       child: JobCard(job: (s as Map).cast<String, dynamic>(), compact: true),
@@ -233,7 +233,7 @@ class _PosterCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final rating = detail['posterRating'] as num?;
-    final completed = detail['posterCompletedJobs'] as int? ?? 0;
+    final completed = detail['posterCompletedTasks'] as int? ?? 0;
     final verified = (detail['posterVerified'] as List?)?.isNotEmpty == true;
     final mine = detail['eligibilityStatus'] == 'IsPoster';
     return Card(
@@ -272,7 +272,7 @@ class _PosterCard extends StatelessWidget {
               onPressed: () async {
                 if (!await requireSignIn(context) || !context.mounted) return;
                 try {
-                  final r = await session.post('chat/start', {'jobId': job['id']}) as Map;
+                  final r = await session.post('chat/start', {'taskId': job['id']}) as Map;
                   if (context.mounted) await push(context, ChatThread(otherUserId: '${r['otherUserId']}', jobId: '${job['id']}'));
                 } on ApiError catch (e) {
                   if (context.mounted) toast(context, e.message, error: true);
@@ -323,7 +323,7 @@ class _ApplyBar extends StatelessWidget {
       'Eligible' => ('${t('Apply')} · ${digits(cost)} ${t(cost == 1 ? 'credit' : 'credits')}', () => _apply(context), null),
       'NotSignedIn' => (t('Sign in to apply'), () => _signIn(context), null),
       'AlreadyApplied' => (t('View my application'), () => _openApplication(context), null),
-      'IsPoster' => (t('See applicants'), () => push(context, Candidates(jobId: '${detail['job']['id']}')), null),
+      'IsPoster' => (t('See applicants'), () => push(context, Candidates(jobId: '${detail['task']['id']}')), null),
       'InsufficientCredits' => (t('Not enough credits'), null, '${t('You have')} ${digits(detail['balance'])} · ${t('Costs')} ${digits(cost)}'),
       'IntakePaused' => (t('Applications paused'), null, null),
       'NeedsCredential' => (t('Needs a checked licence'), null, null),
@@ -410,7 +410,7 @@ class _ApplySheetState extends State<_ApplySheet> {
     }
     setState(() => (_sending = true, _error = null));
     try {
-      await session.post('jobs/${widget.detail['job']['id']}/apply', {
+      await session.post('tasks/${widget.detail['task']['id']}/apply', {
         'appliedVersion': widget.detail['publishedVersion'],
         'note': _note.text,
         'availabilityAttested': true,
@@ -433,7 +433,7 @@ class _ApplySheetState extends State<_ApplySheet> {
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(t('Apply for this work'), style: theme.textTheme.titleLarge),
           const SizedBox(height: 4),
-          Text('${widget.detail['job']['title']}', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+          Text('${widget.detail['task']['title']}', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
           const SizedBox(height: 18),
           TextField(
             controller: _note,
@@ -448,7 +448,7 @@ class _ApplySheetState extends State<_ApplySheet> {
             value: _available,
             onChanged: (v) => setState(() => (_available = v, _showAttestError = false)),
             title: Text(t('I am available'), style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text('${t('Starts')}: ${date(widget.detail['job']['startsAt'])}'),
+            subtitle: Text('${t('Starts')}: ${date(widget.detail['task']['startsAt'])}'),
           ),
           AnimatedSize(
             duration: const Duration(milliseconds: 200),

@@ -129,7 +129,7 @@ class _ApplicationCard extends StatelessWidget {
     final offer = app['hasPendingOffer'] == true;
     final status = '${app['status']}';
     return Pressable(
-      label: '${app['jobTitle']}',
+      label: '${app['taskTitle']}',
       onTap: () async {
         await push(context, ApplicationDetail(id: app['id'] as String));
         onChanged();
@@ -143,7 +143,7 @@ class _ApplicationCard extends StatelessWidget {
           child: Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 8, children: [
-                Text('${app['jobTitle']}', style: theme.textTheme.titleMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text('${app['taskTitle']}', style: theme.textTheme.titleMedium, maxLines: 2, overflow: TextOverflow.ellipsis),
                 Row(spacing: 8, children: [
                   if (offer)
                     const _Pulse(child: Pill('', filled: true, color: K.coral, icon: FluentIcons.gift_24_filled)),
@@ -274,7 +274,7 @@ class _ApplicationDetailState extends State<ApplicationDetail> {
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 32), children: [
-          Text('${a['jobTitle']}', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+          Text('${a['taskTitle']}', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
           Text('${a['posterName']} · ${date(a['submittedAt'])}', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
           const SizedBox(height: 20),

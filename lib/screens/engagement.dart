@@ -65,7 +65,7 @@ class _EngagementDetailState extends State<EngagementDetail> {
     final poster = e['isPoster'] == true;
     final terms = {'payAmount': e['agreedAmount'], 'paymentUnit': e['agreedUnit']};
     return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
-      Text('${e['jobTitle']}', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+      Text('${e['taskTitle']}', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
       const SizedBox(height: 8),
       Pill(t('Engagement$status'), color: status == 'VerifiedCompleted' ? K.success : active ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant),
       const SizedBox(height: 16),

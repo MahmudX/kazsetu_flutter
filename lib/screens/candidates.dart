@@ -18,7 +18,7 @@ class Candidates extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: Text(t('Applicants'))),
         body: Loader(
-          load: () => session.get('my/jobs/$jobId/candidates'),
+          load: () => session.get('my/tasks/$jobId/candidates'),
           builder: (context, data, reload) {
             final list = (data['candidates'] as List).cast<Map<String, dynamic>>();
             final open = data['remainingPositions'] as int? ?? 0;
@@ -62,7 +62,7 @@ class _Header extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 10, children: [
-        Text('${data['jobTitle']}', style: Theme.of(context).textTheme.titleLarge),
+        Text('${data['taskTitle']}', style: Theme.of(context).textTheme.titleLarge),
         Row(children: [
           Expanded(
             child: TweenAnimationBuilder<double>(

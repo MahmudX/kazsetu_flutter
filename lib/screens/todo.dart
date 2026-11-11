@@ -104,7 +104,7 @@ class _TodoState extends State<Todo> {
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, spacing: 3, children: [
                           Text(count > 1 ? '${t(kind)} · ${digits(count)}' : t(kind), style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                          Text('${item['jobTitle']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+                          Text('${item['taskTitle']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
                           if (item['due'] != null)
                             Text(relative(item['due']), style: TextStyle(color: urgent ? theme.colorScheme.tertiary : theme.colorScheme.onSurfaceVariant, fontSize: 12.5, fontWeight: FontWeight.w600)),
                         ]),

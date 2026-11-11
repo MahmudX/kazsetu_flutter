@@ -65,8 +65,8 @@ class _JobEditorState extends State<JobEditor> {
   Future<void> _load() async {
     try {
       final r = widget.jobId == null
-          ? await session.get('jobs/new', {'describe': widget.describe})
-          : await session.get('my/jobs/${widget.jobId}');
+          ? await session.get('tasks/new', {'describe': widget.describe})
+          : await session.get('my/tasks/${widget.jobId}');
       final model = (widget.jobId == null ? r : r['model']) as Map<String, dynamic>;
       setState(() {
         _model = model;
@@ -101,14 +101,14 @@ class _JobEditorState extends State<JobEditor> {
     if (!await requireSignIn(context) || !mounted) return;
     setState(() => (_busy = true, _errors = {}));
     try {
-      final r = await session.post(submit ? 'my/jobs/submit' : 'my/jobs/save', _payload()) as Map;
+      final r = await session.post(submit ? 'my/tasks/submit' : 'my/tasks/save', _payload()) as Map;
       if (!mounted) return;
       if (submit) {
         celebrate(context);
         toast(context, '${r['message']}');
         Navigator.pop(context, true);
       } else {
-        _in['id'] = r['jobId'];
+        _in['id'] = r['taskId'];
         toast(context, '${r['message']}');
       }
     } on ApiError catch (e) {

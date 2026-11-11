@@ -13,9 +13,9 @@ import 'ui.dart';
 const _id = r'([0-9a-fA-F-]{36})';
 final _routes = <(RegExp, Widget Function(Match))>[
   (RegExp('^/applications/$_id'), (m) => ApplicationDetail(id: m[1]!)),
-  (RegExp('^/jobs/$_id/applications'), (m) => Candidates(jobId: m[1]!)),
-  (RegExp('^/jobs/$_id/edit'), (m) => JobEditor(jobId: m[1]!)),
-  (RegExp('^/jobs/$_id(?:/|\$|\\?)'), (m) => JobDetail(id: m[1]!)),
+  (RegExp('^/tasks/$_id/applications'), (m) => Candidates(jobId: m[1]!)),
+  (RegExp('^/tasks/$_id/edit'), (m) => JobEditor(jobId: m[1]!)),
+  (RegExp('^/tasks/$_id(?:/|\$|\\?)'), (m) => JobDetail(id: m[1]!)),
   (RegExp('^/engagements/$_id'), (m) => EngagementDetail(id: m[1]!)),
   (RegExp('^/gigs/$_id(?:/|\$|\\?)'), (m) => GigDetail(id: m[1]!)),
   (RegExp(r'^/people/([^/?#]+)'), (m) => Person(keyOrHandle: Uri.decodeComponent(m[1]!))),
