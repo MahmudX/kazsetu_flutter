@@ -2,9 +2,11 @@ import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 import 'api.dart';
+import 'firebase_options.dart';
 import 'i18n.dart';
 import 'screens/activity.dart';
 import 'screens/auth.dart';
@@ -12,12 +14,14 @@ import 'screens/chat.dart';
 import 'screens/find_work.dart';
 import 'screens/gigs.dart';
 import 'screens/job_editor.dart';
+import 'screens/language.dart';
 import 'screens/me.dart';
 import 'ui.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await session.load();
   // Microsoft Clarity session analytics. Screens with private data (sign-in, verification,
   // chat, agreements, profile editing) are wrapped in ClarityMask so they are never recorded.
@@ -37,17 +41,22 @@ class KazSetuApp extends StatelessWidget {
   static final _dark = buildTheme(Brightness.dark);
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<String>(
-        valueListenable: session.langNotifier,
-        builder: (_, lang, _) => MaterialApp(
+  Widget build(BuildContext context) => ListenableBuilder(
+        listenable: Listenable.merge([session.langNotifier, session.langChosen, session.signedInNotifier]),
+        builder: (_, _) => MaterialApp(
           title: 'KazSetu',
           debugShowCheckedModeBanner: false,
           theme: _light,
           darkTheme: _dark,
-          locale: Locale(lang),
+          locale: Locale(session.lang),
           supportedLocales: const [Locale('bn'), Locale('en')],
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          home: Shell(key: ValueKey(lang)),
+          // First open asks for the language, then sign-in; the app itself is for members only.
+          home: !session.langChosen.value
+              ? const LanguageScreen()
+              : session.signedIn
+                  ? Shell(key: ValueKey(session.lang))
+                  : const AuthScreen(),
         ),
       );
 }
