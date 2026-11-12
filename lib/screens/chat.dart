@@ -153,7 +153,7 @@ class _ChatThreadState extends State<ChatThread> with WidgetsBindingObserver {
 
   Future<void> _load({bool quiet = false}) async {
     try {
-      final t = await session.get('chat/${widget.otherUserId}', {'gig': widget.gigId, 'job': widget.jobId}) as Map;
+      final t = await session.get('chat/${widget.otherUserId}', {'gig': widget.gigId, 'task': widget.jobId}) as Map;
       if (!mounted) return;
       final next = (t['messages'] as List).cast<Map>();
       // Only rebuild when something arrived.
@@ -184,8 +184,8 @@ class _ChatThreadState extends State<ChatThread> with WidgetsBindingObserver {
     try {
       await session.post('chat/${widget.otherUserId}/send', {
         'body': body,
-        if (about?['isJob'] == true) 'jobId': about!['id'],
-        if (about != null && about['isJob'] != true) 'gigId': about['id'],
+        if (about?['isTask'] == true) 'taskId': about!['id'],
+        if (about != null && about['isTask'] != true) 'gigId': about['id'],
       });
       HapticFeedback.lightImpact();
       await _load(quiet: true);
@@ -232,7 +232,7 @@ class _ChatThreadState extends State<ChatThread> with WidgetsBindingObserver {
                   color: theme.colorScheme.primary.withValues(alpha: 0.08),
                   child: ListTile(
                     dense: true,
-                    leading: Icon(thread['about']['isJob'] == true ? FluentIcons.briefcase_24_regular : FluentIcons.sparkle_24_regular),
+                    leading: Icon(thread['about']['isTask'] == true ? FluentIcons.briefcase_24_regular : FluentIcons.sparkle_24_regular),
                     title: Text('${t('About')}: ${thread['about']['title']}', maxLines: 1, overflow: TextOverflow.ellipsis),
                     onTap: () => openLink(context, '${thread['about']['url']}'),
                   ),

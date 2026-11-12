@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:markdown/markdown.dart' as md;
 import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
@@ -682,3 +684,43 @@ class SectionTitle extends StatelessWidget {
 /// Opens a full-screen page with the platform transition.
 Future<T?> push<T>(BuildContext context, Widget page) =>
     Navigator.of(context).push<T>(MaterialPageRoute(builder: (_) => page));
+
+/// Opens a link from user-written text, but only http(s): never tel:, mailto:, intent: or app schemes.
+void openUserLink(String? href) {
+  final uri = Uri.tryParse(href ?? '');
+  if (uri != null && (uri.scheme == 'https' || uri.scheme == 'http')) {
+    launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
+
+/// Task and gig descriptions: basic CommonMark, same rules as the website (UserMarkdown.cs).
+/// Raw HTML is shown as text, links open only if http(s), and images are never loaded: a
+/// remote image would leak the viewer's IP to the poster and could be swapped after review.
+class UserMarkdown extends StatelessWidget {
+  const UserMarkdown(this.data, {super.key, this.style});
+  final String data;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final link = TextStyle(color: theme.colorScheme.primary, decoration: TextDecoration.underline);
+    return MarkdownBody(
+      data: data,
+      extensionSet: md.ExtensionSet.commonMark,
+      softLineBreak: true, // existing plain-text posts keep their line breaks
+      styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+        p: style,
+        a: link,
+        h1: theme.textTheme.titleMedium,
+        h2: theme.textTheme.titleMedium,
+        h3: theme.textTheme.titleSmall,
+      ),
+      onTapLink: (_, href, _) => openUserLink(href),
+      imageBuilder: (uri, _, alt) => GestureDetector(
+        onTap: () => openUserLink(uri.toString()),
+        child: Text(alt?.isNotEmpty == true ? alt! : uri.toString(), style: link),
+      ),
+    );
+  }
+}

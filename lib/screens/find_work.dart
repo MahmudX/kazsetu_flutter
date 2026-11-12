@@ -67,11 +67,11 @@ class _FindWorkState extends State<FindWork> {
       final page = more ? _page + 1 : 1;
       final result = _talents
           ? await session.get('gigs', {'q': _search.text.trim(), 'page': page}) as Map
-          : await session.get('jobs', {..._filters, 'q': _search.text.trim(), 'page': page}) as Map;
+          : await session.get('tasks', {..._filters, 'q': _search.text.trim(), 'page': page}) as Map;
       if (!mounted || generation != _generation) return;
       setState(() {
         if (!more) _jobs.clear();
-        _jobs.addAll((result[_talents ? 'gigs' : 'jobs'] as List).cast<Map<String, dynamic>>());
+        _jobs.addAll((result[_talents ? 'gigs' : 'tasks'] as List).cast<Map<String, dynamic>>());
         _page = page;
         _hasNext = result['hasNextPage'] as bool;
       });

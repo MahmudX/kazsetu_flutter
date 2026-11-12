@@ -41,7 +41,7 @@ class _ReportSheetState extends State<_ReportSheet> {
       final r = await session.post('support', {
         'reason': _reason,
         'detail': _detail.text,
-        'jobId': widget.jobId,
+        'taskId': widget.jobId,
         'engagementId': widget.engagementId,
         'subjectUserId': widget.subjectUserId,
       }) as Map;
