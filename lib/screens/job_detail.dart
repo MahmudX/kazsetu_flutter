@@ -120,7 +120,7 @@ class _JobDetailState extends State<JobDetail> {
               const SizedBox(height: 24),
               Text(t('About the work'), style: theme.textTheme.titleMedium),
               const SizedBox(height: 8),
-              Text('${job['description']}', style: theme.textTheme.bodyLarge?.copyWith(height: 1.55)),
+              UserMarkdown('${job['description']}', style: theme.textTheme.bodyLarge?.copyWith(height: 1.55)),
               if ((job['tags'] as List?)?.isNotEmpty == true) ...[
                 const SizedBox(height: 12),
                 Wrap(spacing: 6, runSpacing: 6, children: [
