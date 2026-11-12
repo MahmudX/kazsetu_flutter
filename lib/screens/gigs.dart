@@ -106,7 +106,7 @@ class GigDetail extends StatelessWidget {
             const SizedBox(height: 6),
             Text(g['locationMode'] == 'Remote' ? t('Remote') : t('In person')),
             SectionTitle(t('About this talent')),
-            Text('${g['description']}', style: theme.textTheme.bodyLarge?.copyWith(height: 1.5)),
+            UserMarkdown('${g['description']}', style: theme.textTheme.bodyLarge?.copyWith(height: 1.5)),
             if ((g['tags'] as List?)?.isNotEmpty == true) ...[
               const SizedBox(height: 12),
               Wrap(spacing: 6, runSpacing: 6, children: [for (final tag in g['tags'] as List) Pill('#$tag')]),
