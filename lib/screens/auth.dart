@@ -58,6 +58,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _password = TextEditingController();
   bool _terms = false, _hidden = true, _busy = false, _termsError = false, _askedSim = false;
   String? _error, _usernameError;
+  bool _calm = false; // _error is a "try again later" note, not a mistake
 
   // As the first screen of the app there is nothing to go back to; the root swaps to the app.
   void _done() {
@@ -83,7 +84,7 @@ class _AuthScreenState extends State<AuthScreen> {
       }
     } on ApiError catch (e) {
       HapticFeedback.mediumImpact();
-      if (mounted) setState(() => (_busy = false, _error = e.message));
+      if (mounted) setState(() => (_busy = false, _error = e.message, _calm = e.status == 429));
     }
   }
 
@@ -117,7 +118,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (mounted) _done();
     } on ApiError catch (e) {
       HapticFeedback.mediumImpact();
-      setState(() => (_busy = false, _error = e.message));
+      setState(() => (_busy = false, _error = e.message, _calm = e.status == 429));
     }
   }
 
@@ -245,7 +246,9 @@ class _AuthScreenState extends State<AuthScreen> {
                                       child: Text(t('Read terms'), style: TextStyle(color: theme.colorScheme.primary, decoration: TextDecoration.underline)),
                                     ),
                             ),
-                          if (_error != null)
+                          const AuthWaitNotice(),
+                          if (_error != null && _calm) AuthWaitNotice(message: _error),
+                          if (_error != null && !_calm)
                             Semantics(
                               liveRegion: true,
                               child: Container(
@@ -302,6 +305,7 @@ class _GoogleFinishScreenState extends State<GoogleFinishScreen> {
   final _password = TextEditingController();
   bool _terms = false, _needsPassword = false, _busy = false, _termsError = false;
   String? _error;
+  bool _calm = false; // _error is a "try again later" note, not a mistake
   Map<String, String> _fields = const {};
 
   @override
@@ -343,6 +347,7 @@ class _GoogleFinishScreenState extends State<GoogleFinishScreen> {
           _fields = {field!: e.message};
         } else {
           _error = e.message;
+          _calm = e.status == 429;
         }
       });
     }
@@ -426,7 +431,9 @@ class _GoogleFinishScreenState extends State<GoogleFinishScreen> {
                             style: TextStyle(color: theme.colorScheme.primary, decoration: TextDecoration.underline)),
                       ),
               ),
-            if (_error != null) ...[
+            const AuthWaitNotice(),
+            if (_error != null && _calm) AuthWaitNotice(message: _error),
+            if (_error != null && !_calm) ...[
               const SizedBox(height: 10),
               Semantics(
                 liveRegion: true,
@@ -444,6 +451,39 @@ class _GoogleFinishScreenState extends State<GoogleFinishScreen> {
           ]),
         ),
       ),
+    );
+  }
+}
+
+/// Issue #47: shown when the server asks this network to wait before another sign-in or sign-up.
+/// With no [message] it follows the countdown of a request that will be sent again by itself; with
+/// one it shows the server's note for a longer wait. Calm colours: nothing went wrong.
+class AuthWaitNotice extends StatelessWidget {
+  const AuthWaitNotice({super.key, this.message});
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ValueListenableBuilder<int>(
+      valueListenable: session.authWait,
+      builder: (context, left, _) {
+        final text = message ?? (left > 0 ? t('Auth wait').replaceFirst('{0}', digits(left)) : null);
+        if (text == null || (message != null && left > 0)) return const SizedBox.shrink();
+        return Semantics(
+          liveRegion: true,
+          child: Container(
+            margin: const EdgeInsets.only(top: 10),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: theme.colorScheme.secondaryContainer, borderRadius: BorderRadius.circular(12)),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(FluentIcons.hourglass_half_24_regular, color: theme.colorScheme.onSecondaryContainer, size: 20),
+              const SizedBox(width: 10),
+              Expanded(child: Text(text, style: TextStyle(color: theme.colorScheme.onSecondaryContainer))),
+            ]),
+          ),
+        );
+      },
     );
   }
 }
