@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
@@ -27,7 +28,20 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- Chat pushes while the app is closed: the brand mark as the status-bar icon, on the
+        <!-- Chat pushes: ChatMessagingService draws them with the sender's photo (ChatNotifications.kt)
+             in place of the plugin's service, which ignores messages anyway; the plugin's receiver
+             still hands every message to Dart. -->
+        <service
+            android:name="io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingService"
+            tools:node="remove" />
+        <service
+            android:name=".ChatMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <!-- Older-style pushes (server fallback): the brand mark as the status-bar icon, on the
              "messages" channel MainActivity creates. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
