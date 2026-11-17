@@ -42,6 +42,7 @@ Future<void> main() async {
   );
   await session.load();
   initPush();
+  pruneDiskImages().ignore(); // keeps the on-phone photo cache bounded
   _updateFromPlay();
   AppLifecycleListener(onResume: _updateFromPlay); // phones keep the app open for days
   // Microsoft Clarity session analytics. Screens with private data (sign-in, verification,
