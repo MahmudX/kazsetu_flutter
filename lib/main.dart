@@ -24,6 +24,8 @@ import 'screens/language.dart';
 import 'screens/me.dart';
 import 'ui.dart';
 
+const _appCheckDebugToken = String.fromEnvironment('APP_CHECK_DEBUG_TOKEN');
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   if (kDebugMode) HttpOverrides.global = DevCertOverrides();
@@ -32,7 +34,11 @@ Future<void> main() async {
   // App Check proves sign-up and sign-in requests come from this app (issue #47). Release builds
   // use Play Integrity; debug builds print a debug token to logcat to register in the console.
   await FirebaseAppCheck.instance.activate(
-    providerAndroid: kDebugMode ? const AndroidDebugProvider() : const AndroidPlayIntegrityProvider(),
+    // A debug token registered in the console can be passed with
+    // --dart-define=APP_CHECK_DEBUG_TOKEN=..., so it survives reinstalls and emulator wipes.
+    providerAndroid: kDebugMode
+        ? AndroidDebugProvider(debugToken: _appCheckDebugToken.isEmpty ? null : _appCheckDebugToken)
+        : const AndroidPlayIntegrityProvider(),
   );
   await session.load();
   initPush();
