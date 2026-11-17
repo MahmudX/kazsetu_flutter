@@ -234,7 +234,6 @@ class _PosterCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final rating = detail['posterRating'] as num?;
     final completed = detail['posterCompletedTasks'] as int? ?? 0;
-    final verified = (detail['posterVerified'] as List?)?.isNotEmpty == true;
     final mine = detail['eligibilityStatus'] == 'IsPoster';
     return Card(
       child: InkWell(
@@ -250,10 +249,7 @@ class _PosterCard extends StatelessWidget {
               Text(t('Posted by'), style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12.5)),
               Row(children: [
                 Flexible(child: Text('${job['posterName']}', style: Theme.of(context).textTheme.titleMedium, overflow: TextOverflow.ellipsis)),
-                if (verified) ...[
-                  const SizedBox(width: 4),
-                  Icon(FluentIcons.shield_checkmark_24_filled, size: 18, color: scheme.primary, semanticLabel: 'verified'),
-                ],
+                VerifiedBadge(detail['posterVerified'] as List?),
               ]),
               Text(
                 [
