@@ -61,7 +61,7 @@ class _TodoState extends State<Todo> {
       body = _error != null ? ErrorMessage(_error!, onRetry: _load) : const Center(child: CircularProgressIndicator());
     } else if (_items!.isEmpty) {
       body = RefreshIndicator(
-        onRefresh: _load,
+        onRefresh: () => session.fresh(_load),
         child: ListView(children: [
           SizedBox(
             height: 480,
@@ -71,7 +71,7 @@ class _TodoState extends State<Todo> {
       );
     } else {
       body = RefreshIndicator(
-        onRefresh: _load,
+        onRefresh: () => session.fresh(_load),
         child: ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: _items!.length,

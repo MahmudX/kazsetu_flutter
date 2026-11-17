@@ -50,7 +50,7 @@ class _VerificationState extends State<Verification> {
           builder: (context, data, reload) {
             final items = (data['credentials'] as List).cast<Map>();
             return RefreshIndicator(
-              onRefresh: reload,
+              onRefresh: () => session.fresh(reload),
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 _Intro(),
                 const SizedBox(height: 16),

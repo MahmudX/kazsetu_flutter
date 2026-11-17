@@ -54,7 +54,7 @@ class _EngagementDetailState extends State<EngagementDetail> {
         body: Loader(
           key: _loader,
           load: () => session.get('engagements/${widget.id}'),
-          builder: (context, e, reload) => RefreshIndicator(onRefresh: reload, child: _body(context, e as Map)),
+          builder: (context, e, reload) => RefreshIndicator(onRefresh: () => session.fresh(reload), child: _body(context, e as Map)),
         ),
       ));
 

@@ -70,7 +70,7 @@ class _MyWorkState extends State<MyWork> {
         // Offers first: the thing that needs a decision.
         ..sort((a, b) => (b['hasPendingOffer'] == true ? 1 : 0) - (a['hasPendingOffer'] == true ? 1 : 0));
       body = RefreshIndicator(
-        onRefresh: _load,
+        onRefresh: () => session.fresh(_load),
         child: CustomScrollView(physics: const AlwaysScrollableScrollPhysics(), slivers: [
           SliverToBoxAdapter(
             child: Padding(
@@ -272,7 +272,7 @@ class _ApplicationDetailState extends State<ApplicationDetail> {
     return Scaffold(
       appBar: AppBar(title: Text(t('Applications'))),
       body: RefreshIndicator(
-        onRefresh: _load,
+        onRefresh: () => session.fresh(_load),
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 32), children: [
           Text('${a['taskTitle']}', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),

@@ -83,7 +83,7 @@ class _KeepState extends State<_Keep> with AutomaticKeepAliveClientMixin {
 
 Widget _list(BuildContext context, List items, Future<void> Function() reload, Widget Function(Map) tile, Widget empty) =>
     RefreshIndicator(
-      onRefresh: reload,
+      onRefresh: () => session.fresh(reload),
       child: items.isEmpty
           ? ListView(children: [SizedBox(height: 440, child: empty)])
           : ListView.separated(
