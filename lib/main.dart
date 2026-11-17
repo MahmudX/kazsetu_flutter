@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:in_app_update/in_app_update.dart';
 
 import 'api.dart';
 import 'firebase_options.dart';
@@ -29,6 +30,8 @@ Future<void> main() async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await session.load();
   initPush();
+  _updateFromPlay();
+  AppLifecycleListener(onResume: _updateFromPlay); // phones keep the app open for days
   // Microsoft Clarity session analytics. Screens with private data (sign-in, verification,
   // chat, agreements, profile editing) are wrapped in ClarityMask so they are never recorded.
   // Use LogLevel.Verbose while testing to debug initialization.
@@ -36,6 +39,26 @@ Future<void> main() async {
     app: const KazSetuApp(),
     clarityConfig: ClarityConfig(projectId: 'zbzyret3th', logLevel: LogLevel.None),
   ));
+}
+
+/// When Google Play has a newer version, Play's full-screen updater downloads it and restarts the
+/// app. Skipping it brings the prompt back the next time the app returns to the foreground.
+/// Debug builds and sideloaded APKs are not Play installs, so the check throws and is ignored.
+var _updating = false;
+Future<void> _updateFromPlay() async {
+  if (!Platform.isAndroid || kDebugMode || _updating) return;
+  _updating = true;
+  try {
+    final info = await InAppUpdate.checkForUpdate();
+    final available = info.updateAvailability == UpdateAvailability.updateAvailable && info.immediateUpdateAllowed;
+    // An update that was interrupted mid-install must be resumed, or the app stays on the old version.
+    if (available || info.updateAvailability == UpdateAvailability.developerTriggeredUpdateInProgress) {
+      await InAppUpdate.performImmediateUpdate();
+    }
+  } catch (_) {
+  } finally {
+    _updating = false;
+  }
 }
 
 class KazSetuApp extends StatelessWidget {
