@@ -1,5 +1,7 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
+import 'api.dart';
+import 'push.dart';
 import 'screens/candidates.dart';
 import 'screens/chat.dart';
 import 'screens/engagement.dart';
@@ -22,15 +24,61 @@ final _routes = <(RegExp, Widget Function(Match))>[
   (RegExp(r'^/chat/([^/?#]+)'), (m) => ChatThread(otherUserId: Uri.decodeComponent(m[1]!))),
 ];
 
+Widget? _screen(String path) {
+  for (final (pattern, page) in _routes) {
+    final m = pattern.firstMatch(path);
+    if (m != null) return page(m);
+  }
+  return null;
+}
+
 /// Opens a server path (inbox deep links, chat topics) in the matching screen, or the website for
 /// anything the app does not show.
 Future<void> openLink(BuildContext context, String path) async {
-  for (final (pattern, page) in _routes) {
-    final m = pattern.firstMatch(path);
-    if (m != null) {
-      await push(context, page(m));
-      return;
-    }
+  final screen = _screen(path);
+  screen == null ? await openWeb(path) : await push(context, screen);
+}
+
+/// Android App Links: a tapped `kazsetu.com/tasks/{id}` or `/gigs/{id}/{slug}` link opens here
+/// instead of the browser (intent filter in AndroidManifest.xml, verified by the website's
+/// /.well-known/assetlinks.json).
+///
+/// A link tapped while signed out: the app is for members only, so it opens after sign-in.
+String? _pending;
+
+/// The screen for a link's path, or null when the app does not show it or nobody is signed in yet.
+Route<void>? linkRoute(String path) {
+  final screen = _screen(path);
+  if (screen == null) return null;
+  if (!session.signedIn) {
+    _pending = path;
+    return null;
   }
-  await openWeb(path);
+  return MaterialPageRoute(builder: (_) => screen);
+}
+
+/// Links tapped while the app is running. Registered before runApp so it runs ahead of
+/// MaterialApp's own handler, which would pushNamed the path and fail on anything unknown.
+/// Cold starts arrive as the initial route instead (KazSetuApp's onGenerateInitialRoutes).
+class _Links with WidgetsBindingObserver {
+  @override
+  Future<bool> didPushRouteInformation(RouteInformation info) async {
+    final route = linkRoute(info.uri.path);
+    if (route != null) navigatorKey.currentState?.push(route);
+    return true;
+  }
+}
+
+void initLinks() {
+  WidgetsBinding.instance.addObserver(_Links());
+  session.signedInNotifier.addListener(() {
+    final path = _pending;
+    if (!session.signedIn || path == null) return;
+    _pending = null;
+    // After the frame that swaps sign-in for the home screen, so the listing lands on top of it.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final route = linkRoute(path);
+      if (route != null) navigatorKey.currentState?.push(route);
+    });
+  });
 }
