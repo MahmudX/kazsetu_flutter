@@ -13,6 +13,7 @@ import 'package:in_app_update/in_app_update.dart';
 import 'api.dart';
 import 'firebase_options.dart';
 import 'i18n.dart';
+import 'links.dart';
 import 'push.dart';
 import 'screens/activity.dart';
 import 'screens/auth.dart';
@@ -36,6 +37,7 @@ Future<void> main() async {
   );
   await session.load();
   initPush();
+  initLinks();
   _updateFromPlay();
   AppLifecycleListener(onResume: _updateFromPlay); // phones keep the app open for days
   // Microsoft Clarity session analytics. Screens with private data (sign-in, verification,
@@ -87,14 +89,22 @@ class KazSetuApp extends StatelessWidget {
           locale: Locale(session.lang),
           supportedLocales: const [Locale('bn'), Locale('en')],
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          // First open asks for the language, then sign-in; the app itself is for members only.
-          home: !session.langChosen.value
-              ? const LanguageScreen()
-              : session.signedIn
-                  ? Shell(key: ValueKey(session.lang))
-                  : const AuthScreen(),
+          home: _home(),
+          // A cold start from a tapped link: the home screen with the listing on top. The home
+          // route builds lazily, so it still follows sign-in and language changes.
+          onGenerateInitialRoutes: (path) => [
+            MaterialPageRoute<void>(settings: const RouteSettings(name: '/'), builder: (_) => _home()),
+            ?linkRoute(path),
+          ],
         ),
       );
+
+  // First open asks for the language, then sign-in; the app itself is for members only.
+  static Widget _home() => !session.langChosen.value
+      ? const LanguageScreen()
+      : session.signedIn
+          ? Shell(key: ValueKey(session.lang))
+          : const AuthScreen();
 }
 
 class Shell extends StatefulWidget {
