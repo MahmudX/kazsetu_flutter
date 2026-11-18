@@ -1,10 +1,17 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
+import 'dart:ui' as ui;
 
+import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:markdown/markdown.dart' as md;
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'api.dart';
@@ -418,6 +425,68 @@ Color statusColor(BuildContext context, String status) {
   };
 }
 
+/// A network photo kept on the phone. Profile and listing photos never change at a URL (a new
+/// photo is a new file), so each is downloaded once and then read from storage: scrolling Gigs
+/// after the first visit costs no photo data at all. Kept in the app's cache directory (not the
+/// temporary one, which Android empties on every app update); Android may clear it when space
+/// runs low, and [pruneDiskImages] bounds it.
+class DiskImage extends ImageProvider<DiskImage> {
+  const DiskImage(this.url);
+  final String url;
+
+  static Future<Directory> folder = getApplicationCacheDirectory().then((d) => Directory('${d.path}/photos'));
+
+  @override
+  Future<DiskImage> obtainKey(ImageConfiguration configuration) => SynchronousFuture(this);
+
+  @override
+  ImageStreamCompleter loadImage(DiskImage key, ImageDecoderCallback decode) =>
+      MultiFrameImageStreamCompleter(codec: _load(decode), scale: 1, debugLabel: url);
+
+  Future<ui.Codec> _load(ImageDecoderCallback decode) async {
+    final dir = await folder;
+    final file = File('${dir.path}/${sha1.convert(utf8.encode(url))}');
+    Uint8List bytes;
+    if (await file.exists()) {
+      bytes = await file.readAsBytes();
+      file.setLastModified(DateTime.now()).ignore(); // recently seen photos survive pruning
+    } else {
+      bytes = await session.download(url);
+      // Write to a temporary name first, so a half-written file is never read as a photo.
+      final part = File('${file.path}.part');
+      await dir.create(recursive: true);
+      await part.writeAsBytes(bytes);
+      await part.rename(file.path);
+    }
+    return decode(await ui.ImmutableBuffer.fromUint8List(bytes));
+  }
+
+  @override
+  bool operator ==(Object other) => other is DiskImage && other.url == url;
+  @override
+  int get hashCode => url.hashCode;
+}
+
+/// Keeps the photo cache under [maxBytes], removing the least recently seen photos first.
+/// Run once at start, off the critical path.
+Future<void> pruneDiskImages({int maxBytes = 60 << 20}) async {
+  try {
+    final dir = await DiskImage.folder;
+    if (!await dir.exists()) return;
+    final files = [
+      for (final e in await dir.list().toList())
+        if (e is File) (file: e, stat: await e.stat()),
+    ]..sort((a, b) => b.stat.modified.compareTo(a.stat.modified));
+    var total = 0;
+    for (final f in files) {
+      total += f.stat.size;
+      if (total > maxBytes || f.file.path.endsWith('.part')) await f.file.delete();
+    }
+  } catch (_) {
+    // A cache that cannot be pruned now is pruned on the next start.
+  }
+}
+
 class Avatar extends StatelessWidget {
   const Avatar({super.key, required this.name, this.url, this.size = 40});
   final String name;
@@ -432,7 +501,7 @@ class Avatar extends StatelessWidget {
         backgroundColor: K.navy,
         foregroundImage: url == null
             ? null
-            : ResizeImage(NetworkImage(absUrl(url!)), width: (size * MediaQuery.devicePixelRatioOf(context)).round()),
+            : ResizeImage(DiskImage(absUrl(url!)), width: (size * MediaQuery.devicePixelRatioOf(context)).round()),
         child: Text(initials, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: size * 0.36)),
       ),
     );
@@ -540,12 +609,11 @@ class NetPhoto extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
-      child: Image.network(
-        absUrl(url),
+      child: Image(
+        image: ResizeImage(DiskImage(absUrl(url)), width: (logical * dpr).round()),
         width: width,
         height: height,
         fit: fit,
-        cacheWidth: (logical * dpr).round(),
         semanticLabel: label,
         excludeFromSemantics: label == null,
         gaplessPlayback: true,

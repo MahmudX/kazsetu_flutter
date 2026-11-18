@@ -106,9 +106,12 @@ class ChatThread extends StatefulWidget {
 }
 
 class _ChatThreadState extends State<ChatThread> with WidgetsBindingObserver {
+  // A push from this person reloads the thread at once (_onPush), so polling is only the fallback
+  // for a missed push or no push permission: every 15 s, not every 4 s (about a quarter of the
+  // requests and radio wake-ups while a thread is open).
   // ponytail: polling, not a socket; switch to SignalR with a header-authenticated connection if
-  // message volume makes a 4 s poll wasteful.
-  static const _interval = Duration(seconds: 4);
+  // a missed push waiting up to 15 s ever matters.
+  static const _interval = Duration(seconds: 15);
   Map? _thread;
   Object? _error;
   final _messages = <Map>[];

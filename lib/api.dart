@@ -50,6 +50,9 @@ class ApiError implements Exception {
 /// rebuilds the few widgets that show the person, badges or sign-in state (frequent).
 class Session extends ChangeNotifier {
   static const _store = FlutterSecureStorage();
+  // One client for the whole app: connections are kept alive and reused, so a screen of requests
+  // pays for one TLS handshake instead of one each (less data, less radio time, faster).
+  final _http = http.Client();
   String? _access, _refresh;
   Future<bool>? _refreshing;
 
@@ -183,6 +186,13 @@ class Session extends ChangeNotifier {
 
   void clearCache() => _cache.clear();
 
+  /// A file's bytes over the shared connection (photos for [DiskImage]); throws when it fails.
+  Future<Uint8List> download(String url) async {
+    final response = await _http.get(Uri.parse(url)).timeout(const Duration(seconds: 30));
+    if (response.statusCode != 200) throw HttpException('HTTP ${response.statusCode}', uri: Uri.parse(url));
+    return response.bodyBytes;
+  }
+
   Future<dynamic> get(String path, [Map<String, Object?> query = const {}]) {
     final key = '$lang ${_uri(path, query)}';
     final ttl = cacheFor(path);
@@ -216,7 +226,7 @@ class Session extends ChangeNotifier {
         final request = http.MultipartRequest('POST', _uri(path, const {}))
           ..headers.addAll(_headers(json: false))
           ..files.add(http.MultipartFile.fromBytes(field, bytes, filename: filename));
-        return http.Response.fromStream(await request.send().timeout(const Duration(seconds: 60)));
+        return http.Response.fromStream(await _http.send(request).timeout(const Duration(seconds: 60)));
       }, path).whenComplete(clearCache);
 
   /// Profile and listing photos: declare → PUT the exact bytes to the signed storage URL →
@@ -231,7 +241,7 @@ class Session extends ChangeNotifier {
       'height': image.image.height,
     }) as Map<String, dynamic>;
     image.image.dispose();
-    final put = await http
+    final put = await _http
         .put(Uri.parse(ticket['url'] as String),
             headers: (ticket['headers'] as Map).cast<String, String>(), body: jpeg)
         .timeout(const Duration(seconds: 60));
@@ -263,7 +273,7 @@ class Session extends ChangeNotifier {
       final appCheck = await _appCheckToken();
       if (appCheck != null) headers['X-Firebase-AppCheck'] = appCheck;
     }
-    return (method == 'GET' ? http.get(uri, headers: headers) : http.post(uri, headers: headers, body: jsonEncode(body)))
+    return (method == 'GET' ? _http.get(uri, headers: headers) : _http.post(uri, headers: headers, body: jsonEncode(body)))
         .timeout(const Duration(seconds: 20));
   }
 

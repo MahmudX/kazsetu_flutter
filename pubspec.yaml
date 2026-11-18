@@ -51,6 +51,7 @@ dependencies:
   markdown: ^7.3.1
   in_app_update: ^5.0.0
   firebase_app_check: ^0.5.1
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:

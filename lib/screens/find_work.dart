@@ -365,7 +365,9 @@ class _Hero extends StatefulWidget {
 }
 
 class _HeroState extends State<_Hero> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 9))..repeat(reverse: true);
+  // Drifts out and back once, then rests: a forever-looping glow kept the screen redrawing at
+  // 60 fps the whole time Find was open, which costs battery for decoration.
+  late final _c = AnimationController(vsync: this, duration: const Duration(seconds: 9))..repeat(reverse: true, count: 2);
   @override
   void dispose() {
     _c.dispose();

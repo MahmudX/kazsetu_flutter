@@ -169,7 +169,8 @@ class _Pulse extends StatefulWidget {
 }
 
 class _PulseState extends State<_Pulse> with SingleTickerProviderStateMixin {
-  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat(reverse: true);
+  // A few pulses catch the eye, then it rests; looping forever redrew the screen continuously.
+  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat(reverse: true, count: 6);
   @override
   void dispose() {
     _c.dispose();
