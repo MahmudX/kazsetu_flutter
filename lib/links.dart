@@ -59,7 +59,7 @@ Route<void>? linkRoute(String path) {
 
 /// Links tapped while the app is running. Registered before runApp so it runs ahead of
 /// MaterialApp's own handler, which would pushNamed the path and fail on anything unknown.
-/// Cold starts arrive as the initial route instead (KazSetuApp's onGenerateInitialRoutes).
+/// Cold starts arrive as the platform's initial route instead (initLinks).
 class _Links with WidgetsBindingObserver {
   @override
   Future<bool> didPushRouteInformation(RouteInformation info) async {
@@ -71,6 +71,14 @@ class _Links with WidgetsBindingObserver {
 
 void initLinks() {
   WidgetsBinding.instance.addObserver(_Links());
+  // Cold start from a tapped link: the listing goes on top of home once the first frame is up.
+  final initial = Uri.parse(WidgetsBinding.instance.platformDispatcher.defaultRouteName).path;
+  if (initial != '/') {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final route = linkRoute(initial);
+      if (route != null) navigatorKey.currentState?.push(route);
+    });
+  }
   session.signedInNotifier.addListener(() {
     final path = _pending;
     if (!session.signedIn || path == null) return;
