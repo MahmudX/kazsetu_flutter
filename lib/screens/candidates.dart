@@ -23,7 +23,7 @@ class Candidates extends StatelessWidget {
             final list = (data['candidates'] as List).cast<Map<String, dynamic>>();
             final open = data['remainingPositions'] as int? ?? 0;
             return RefreshIndicator(
-              onRefresh: reload,
+              onRefresh: () => session.fresh(reload),
               child: CustomScrollView(physics: const AlwaysScrollableScrollPhysics(), slivers: [
                 SliverToBoxAdapter(child: _Header(data: data, open: open)),
                 if (list.isEmpty)
@@ -137,7 +137,6 @@ class _CandidateCardState extends State<_CandidateCard> {
     final status = '${c['status']}';
     final active = c['isActive'] == true;
     final id = c['applicationId'];
-    final verified = (c['workerVerified'] as List?)?.isNotEmpty == true;
     final terms = widget.offerTerms;
     return Card(
       child: Padding(
@@ -153,10 +152,7 @@ class _CandidateCardState extends State<_CandidateCard> {
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
                     Flexible(child: Text('${c['workerName']}', style: theme.textTheme.titleMedium, overflow: TextOverflow.ellipsis)),
-                    if (verified) ...[
-                      const SizedBox(width: 4),
-                      Icon(FluentIcons.shield_checkmark_24_filled, size: 18, color: theme.colorScheme.primary, semanticLabel: t('Checked')),
-                    ],
+                    VerifiedBadge(c['workerVerified'] as List?),
                   ]),
                   Text(
                     (c['completedAsWorker'] as int? ?? 0) > 0

@@ -387,6 +387,27 @@ class Pill extends StatelessWidget {
   }
 }
 
+/// Beside a name, as on the web (_VerifiedBadge): a blue starburst for a checked NID and a purple
+/// one for checked professional licences. [types] is the API's list of verification names.
+class VerifiedBadge extends StatelessWidget {
+  const VerifiedBadge(this.types, {super.key, this.size = 18});
+  final List? types;
+  final double size;
+  @override
+  Widget build(BuildContext context) {
+    final list = types ?? const [];
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    Widget star(Color color) => Padding(
+          padding: const EdgeInsets.only(left: 4),
+          child: Icon(FluentIcons.checkmark_starburst_16_filled, size: size, color: color, semanticLabel: t('Verified')),
+        );
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      if (list.contains('Nid')) star(dark ? const Color(0xFF5AA2E0) : const Color(0xFF2B6CB0)),
+      if (list.any((v) => v != 'Nid')) star(dark ? const Color(0xFFB794F6) : const Color(0xFF7C3AED)),
+    ]);
+  }
+}
+
 Color statusColor(BuildContext context, String status) {
   final s = Theme.of(context).colorScheme;
   return switch (status) {

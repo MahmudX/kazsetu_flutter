@@ -131,6 +131,7 @@ class Session extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    clearCache(); // the next person on this phone never sees the last one's data
     _access = _refresh = null;
     me = null;
     signedInNotifier.value = false;
@@ -145,6 +146,7 @@ class Session extends ChangeNotifier {
   }
 
   void _saveTokens(dynamic body) {
+    clearCache();
     _access = body['accessToken'] as String;
     _refresh = body['refreshToken'] as String;
     _store.write(key: 'access', value: _access);
@@ -153,11 +155,60 @@ class Session extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<dynamic> get(String path, [Map<String, Object?> query = const {}]) =>
-      _send(() => _request('GET', path, query: query), path);
+  // ---- Read cache ----
+  // Moving between screens should not refetch what was just shown. GET responses are kept in
+  // memory for a short time chosen by what they are, identical requests in flight share one call,
+  // and anything that changes data (a post, an upload, a push, signing in or out) clears it all,
+  // so a screen never shows data from before the person's own action. Pull-to-refresh runs inside
+  // [fresh] and always goes to the server.
+  // ponytail: whole-cache clear on any write; per-path invalidation if writes ever become frequent.
+  final _cache = <String, ({String json, DateTime at})>{};
+  final _inFlight = <String, Future<dynamic>>{};
+  static const _freshZone = #kazsetuFresh;
 
-  Future<dynamic> post(String path, [Object? body]) =>
-      _send(() => _request('POST', path, body: body ?? {}), path);
+  /// How long a GET to [path] may be answered from memory; zero for data that must always be live.
+  static Duration cacheFor(String path) {
+    if (path == 'me' || path == 'profile' || path.startsWith('chat') || path.endsWith('/new')) return Duration.zero;
+    if (RegExp(r'^my/(tasks|gigs)/[^/]+$').hasMatch(path)) return Duration.zero; // editors load the latest
+    if (path == 'lookups') return const Duration(hours: 1);
+    if (path.startsWith('my/') ||
+        const ['activity', 'applications', 'engagements', 'credits', 'verification'].any((p) => path == p || path.startsWith('$p/'))) {
+      return const Duration(minutes: 1);
+    }
+    return const Duration(minutes: 5); // public browsing: tasks, gigs, profiles
+  }
+
+  /// Runs [action] with every GET inside it going to the server (pull-to-refresh).
+  Future<T> fresh<T>(Future<T> Function() action) => runZoned(action, zoneValues: {_freshZone: true});
+
+  void clearCache() => _cache.clear();
+
+  Future<dynamic> get(String path, [Map<String, Object?> query = const {}]) {
+    final key = '$lang ${_uri(path, query)}';
+    final ttl = cacheFor(path);
+    if (Zone.current[_freshZone] == true) {
+      // A refreshed list also drops its other pages, so paging on shows the same moment in time.
+      _cache.removeWhere((k, _) => k == key || k.startsWith('$lang ${_uri(path, const {})}?'));
+    } else if (_cache[key] case final hit? when DateTime.now().difference(hit.at) < ttl) {
+      return Future.value(jsonDecode(hit.json)); // a copy, so a screen cannot edit the cache
+    }
+    return _inFlight[key] ??= _send(() => _request('GET', path, query: query), path).then((data) {
+      if (ttl > Duration.zero) {
+        if (_cache.length >= 300) _cache.remove(_cache.keys.first);
+        _cache[key] = (json: jsonEncode(data), at: DateTime.now());
+      }
+      return data;
+    }).whenComplete(() {
+      // A block, not `=> remove(key)`: remove returns this very future, and whenComplete would
+      // wait on it, so the request would wait for itself forever.
+      _inFlight.remove(key);
+    });
+  }
+
+  Future<dynamic> post(String path, [Object? body]) {
+    clearCache();
+    return _send(() => _request('POST', path, body: body ?? {}), path).whenComplete(clearCache);
+  }
 
   /// Multipart upload of one file field (credential evidence).
   Future<dynamic> upload(String path, String field, Uint8List bytes, {String filename = 'photo.jpg'}) =>
@@ -166,7 +217,7 @@ class Session extends ChangeNotifier {
           ..headers.addAll(_headers(json: false))
           ..files.add(http.MultipartFile.fromBytes(field, bytes, filename: filename));
         return http.Response.fromStream(await request.send().timeout(const Duration(seconds: 60)));
-      }, path);
+      }, path).whenComplete(clearCache);
 
   /// Profile and listing photos: declare → PUT the exact bytes to the signed storage URL →
   /// complete. [kind] is 'photos' or 'profile/picture'. Returns the completed JSON.

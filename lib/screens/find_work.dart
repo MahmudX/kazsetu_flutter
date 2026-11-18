@@ -98,7 +98,7 @@ class _FindWorkState extends State<FindWork> {
     final firstName = '${session.me?['displayName'] ?? ''}'.split(' ').first;
     return RefreshIndicator(
       edgeOffset: 180,
-      onRefresh: () => _load(),
+      onRefresh: () => session.fresh(_load),
       child: CustomScrollView(
         controller: _scroll,
         physics: const AlwaysScrollableScrollPhysics(),
@@ -130,7 +130,12 @@ class _FindWorkState extends State<FindWork> {
                   selected: {_talents},
                   onSelectionChanged: (v) {
                     HapticFeedback.selectionClick();
-                    setState(() => _talents = v.first);
+                    // Drop the other kind's results at once: a task drawn as a gig card (or the
+                    // reverse) reads fields it does not have until the new page arrives.
+                    setState(() {
+                      _talents = v.first;
+                      _jobs.clear();
+                    });
                     _load();
                   },
                 ),

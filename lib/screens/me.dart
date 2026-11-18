@@ -59,10 +59,10 @@ class _MeState extends State<Me> {
     final me = session.me;
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: () async {
+        onRefresh: () => session.fresh(() async {
           await session.refreshMe();
           await _load();
-        },
+        }),
         child: CustomScrollView(physics: const AlwaysScrollableScrollPhysics(), slivers: [
           SliverToBoxAdapter(
             child: Container(

@@ -50,3 +50,12 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+// Chat notifications drawn by the app (ChatNotifications.kt): FCM's RemoteMessage and
+// conversation-style NotificationCompat/shortcuts. The BoM matches firebase_core's, so there is
+// still one copy of Firebase.
+dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:35.2.0"))
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("androidx.core:core-ktx:1.15.0")
+}
