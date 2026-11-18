@@ -214,6 +214,33 @@ class _MeState extends State<Me> {
                     }
                   },
                 ),
+                // Google Play requires in-app account deletion. It goes to support as a case: hard
+                // deletion is blocked by open agreements and ledger rows, so an operator processes it.
+                TextButton.icon(
+                  icon: const Icon(FluentIcons.delete_24_regular),
+                  label: Text(t('Delete account')),
+                  style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+                  onPressed: () async {
+                    final ok = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text(t('Delete account?')),
+                        content: Text(t('Delete account body')),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t('Cancel'))),
+                          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(t('Request deletion'))),
+                        ],
+                      ),
+                    );
+                    if (ok != true) return;
+                    try {
+                      final r = await session.post('support', {'reason': 'Delete my account'}) as Map;
+                      if (context.mounted) toast(context, '${r['message']}');
+                    } on ApiError catch (e) {
+                      if (context.mounted) toast(context, e.message, error: true);
+                    }
+                  },
+                ),
               ],
               const SizedBox(height: 24),
             ]),

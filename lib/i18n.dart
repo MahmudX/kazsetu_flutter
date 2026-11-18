@@ -220,6 +220,13 @@ const _strings = <String, List<String>>{
   'Help': ['Help & support', 'সাহায্য ও সহায়তা'],
   'Sign out': ['Sign out', 'সাইন আউট'],
   'Sign out?': ['Sign out of KazSetu?', 'কাজসেতু থেকে সাইন আউট করবেন?'],
+  'Delete account': ['Delete my account', 'আমার অ্যাকাউন্ট মুছুন'],
+  'Delete account?': ['Delete your KazSetu account?', 'আপনার কাজসেতু অ্যাকাউন্ট মুছবেন?'],
+  'Delete account body': [
+    'Our team will delete your account and personal data, and tell you when it is done. Open agreements are settled first.',
+    'আমাদের টিম আপনার অ্যাকাউন্ট ও ব্যক্তিগত তথ্য মুছে দেবে এবং শেষ হলে জানাবে। চলমান চুক্তি আগে নিষ্পত্তি করা হবে।'
+  ],
+  'Request deletion': ['Request deletion', 'মুছে ফেলার অনুরোধ'],
   // Auth
   'Sign in': ['Sign in', 'সাইন ইন'],
   'Create account': ['Create account', 'অ্যাকাউন্ট খুলুন'],
