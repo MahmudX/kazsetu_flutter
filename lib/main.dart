@@ -97,12 +97,9 @@ class KazSetuApp extends StatelessWidget {
           supportedLocales: const [Locale('bn'), Locale('en')],
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
           home: _home(),
-          // A cold start from a tapped link: the home screen with the listing on top. The home
-          // route builds lazily, so it still follows sign-in and language changes.
-          onGenerateInitialRoutes: (path) => [
-            MaterialPageRoute<void>(settings: const RouteSettings(name: '/'), builder: (_) => _home()),
-            ?linkRoute(path),
-          ],
+          // A cold start from a tapped link would otherwise hand its path to the Navigator as a
+          // named route; initLinks() pushes the listing itself after the first frame.
+          initialRoute: '/',
         ),
       );
 
